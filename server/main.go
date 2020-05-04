@@ -31,3 +31,15 @@ func run() error {
 	s.Start()
 	return nil
 }
+
+/* Use the distance algorithm
+dc, err := route.NewDistanceCalculator(apikey)
+if err != nil {
+	return err
+}
+dr, err := dc.GetDistance("Prästströmsvägen 10, Jakobstad", "Handelsesplanaden 17, Vasa")
+if err != nil {
+	return err
+}
+fmt.Printf("Kms: %f, Duration: %s", dr.Kilometers, dr.Time)
+*/

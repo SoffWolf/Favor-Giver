@@ -3,41 +3,9 @@ package main
 import (
 	"log"
 
-	dbpkg "github.com/luxas/favorgiver/pkg/db"
-	"github.com/luxas/favorgiver/pkg/rest"
-	"github.com/luxas/favorgiver/pkg/types"
-)
-
-var (
-	resources = []rest.ResourceHandler{
-		{
-			ResourceName: "helpers",
-			InitObject: func() interface{} {
-				return &types.Helper{}
-			},
-			InitList: func() interface{} {
-				return &[]types.Helper{}
-			},
-		},
-		{
-			ResourceName: "seekers",
-			InitObject: func() interface{} {
-				return &types.Seeker{}
-			},
-			InitList: func() interface{} {
-				return &[]types.Seeker{}
-			},
-		},
-		{
-			ResourceName: "tasks",
-			InitObject: func() interface{} {
-				return &types.Task{}
-			},
-			InitList: func() interface{} {
-				return &[]types.Task{}
-			},
-		},
-	}
+	api "github.com/thechosenoneneo/favor-giver/pkg/apis/core/v1alpha1"
+	dbpkg "github.com/thechosenoneneo/favor-giver/pkg/db"
+	"github.com/thechosenoneneo/favor-giver/pkg/rest"
 )
 
 func main() {
@@ -53,15 +21,12 @@ func run() error {
 	}
 	defer db.DB.Close()
 
-	for _, resource := range resources {
-		db.DB.AutoMigrate(resource.InitObject())
-	}
+	api.RegisterDB(db)
 
 	s := rest.NewRESTServer(":8080", db)
 
 	apiGroups := rest.NewAPIGroupsHandler(s.Echo())
-	coreAPIGroup, _ := apiGroups.Add("core.favorgiver.io", "v1alpha1")
-	coreAPIGroup.Add(resources...)
+	api.RegisterREST(apiGroups)
 
 	s.Start()
 	return nil

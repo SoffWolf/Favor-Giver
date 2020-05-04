@@ -1,8 +1,7 @@
-package types
+package v1alpha1
 
 import "time"
 
-// gorm:"primary_key"
 type Metadata struct {
 	ID        uint      `json:"id"`
 	CreatedAt time.Time `json:"createdAt"`

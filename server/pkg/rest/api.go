@@ -8,7 +8,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/luxas/favorgiver/pkg/db"
+	"github.com/thechosenoneneo/favor-giver/pkg/db"
 )
 
 type CustomContext struct {
@@ -62,7 +62,7 @@ type APIGroupsHandler struct {
 }
 
 func (agh *APIGroupsHandler) Info(c echo.Context) error {
-	apiGroupNames := make([]string, len(agh.apiGroups))
+	apiGroupNames := make([]string, 0, len(agh.apiGroups))
 	for name := range agh.apiGroups {
 		apiGroupNames = append(apiGroupNames, name)
 	}
@@ -116,7 +116,6 @@ func (agh *APIGroupHandler) Add(resources ...ResourceHandler) error { // TODO: S
 				return fmt.Errorf("resource %s already exists!", resource.Name())
 			}
 
-			fmt.Printf("registering rh for %s\n", resource.Name())
 			g := agh.groupHandler.Group("/" + resource.Name())
 			g.GET("/", ListResource(resource))
 			g.GET("/:id", GetResource(resource))
@@ -154,7 +153,6 @@ func (rh *ResourceHandler) Name() string {
 
 func GetResource(rh ResourceHandler) func(echo.Context) error {
 	return func(c echo.Context) error {
-		fmt.Printf("GET rh %s %s\n", rh.Name(), c.Path())
 		cc := c.(*CustomContext)
 		obj := rh.InitObject()
 		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -168,7 +166,6 @@ func GetResource(rh ResourceHandler) func(echo.Context) error {
 
 func ListResource(rh ResourceHandler) func(echo.Context) error {
 	return func(c echo.Context) error {
-		fmt.Printf("LIST rh %s %s\n", rh.Name(), c.Path())
 		cc := c.(*CustomContext)
 		list := rh.InitList()
 		cc.db.DB.Find(list)
@@ -178,17 +175,14 @@ func ListResource(rh ResourceHandler) func(echo.Context) error {
 
 func CreateResource(rh ResourceHandler) func(echo.Context) error {
 	return func(c echo.Context) error {
-		fmt.Printf("POST rh %s %s\n", rh.Name(), c.Path())
 		cc := c.(*CustomContext)
 		obj := rh.InitObject()
-		/*if err := c.Bind(obj); err != nil {
-			return err
-		}*/
 
+		// Always decode JSON
 		if err := json.NewDecoder(c.Request().Body).Decode(obj); err != nil {
 			return err
 		}
-		fmt.Println("POST", obj)
+
 		cc.db.DB.Create(obj)
 		return c.NoContent(http.StatusCreated)
 	}
@@ -196,7 +190,6 @@ func CreateResource(rh ResourceHandler) func(echo.Context) error {
 
 func DeleteResource(rh ResourceHandler) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		fmt.Printf("DELETE rh %s %s\n", rh.Name(), c.Path())
 		cc := c.(*CustomContext)
 		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 		if err != nil {
@@ -206,5 +199,3 @@ func DeleteResource(rh ResourceHandler) func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 }
-
-// /apis/core.favorgiver.io/v1alpha1/seekers

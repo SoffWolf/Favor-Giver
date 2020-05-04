@@ -1,7 +1,7 @@
 package matcher
 
 import (
-	"github.com/luxas/favorgiver/pkg/db"
+	"github.com/thechosenoneneo/favor-giver/pkg/db"
 )
 
 func NewMatcher(db *db.Database) *Matcher {

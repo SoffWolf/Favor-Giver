@@ -1,0 +1,12 @@
+{
+    "startLocation": {
+        "lat": 1,
+        "lng": -2
+    },
+    "favorTypes": [
+        {
+            "id": "FixComputer"
+        }
+    ],
+    "helperID": 1
+}

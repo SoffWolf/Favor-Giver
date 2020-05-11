@@ -1,0 +1,9 @@
+{
+    "id": "FixComputer",
+    "shortDescription": "Please fix my computer!",
+    "expertises": [
+        {
+            "id": "Computer"
+        }
+    ]
+}

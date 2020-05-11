@@ -1,0 +1,15 @@
+{
+    "seekerID": 1,
+    "helperID": 1,
+    "spec": {
+        "favorType": "GoShopping",
+        "instructions": "Hello guy!",
+        "seekerLocation": {
+            "lat": 1,
+            "lng": 2
+        }
+    },
+    "status": {
+        
+    }
+}

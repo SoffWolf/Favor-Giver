@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	api "github.com/thechosenoneneo/favor-giver/pkg/apis/core/v1alpha1"
 	dbpkg "github.com/thechosenoneneo/favor-giver/pkg/db"
@@ -19,7 +22,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer db.DB.Close()
 
 	api.RegisterDB(db)
 
@@ -27,6 +29,17 @@ func run() error {
 
 	apiGroups := rest.NewAPIGroupsHandler(s.Echo())
 	api.RegisterREST(apiGroups)
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Printf("Caught exit signal, stopping...")
+		if err := db.DB.Close(); err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}()
 
 	s.Start()
 	return nil

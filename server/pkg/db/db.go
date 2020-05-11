@@ -10,7 +10,7 @@ func NewDatabase(filename string) (*Database, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Database{db}, nil
+	return &Database{db.Debug()}, nil
 }
 
 type Database struct {

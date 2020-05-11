@@ -65,7 +65,7 @@ var (
 					return c.String(http.StatusOK, "Hello from PUT subresource 'foo'")
 				},
 			},
-			[]string{"Helper", "Seeker"},
+			[]string{"Helper", "Seeker", "FavorType"},
 		),
 		registerrest.NewResource(
 			"helpsessions",
@@ -87,7 +87,7 @@ var (
 				return &[]FavorType{}
 			},
 			nil,
-			[]string{"Expertises", "HelpSessions"},
+			[]string{"Expertises", "HelpSessions", "Tasks"},
 		),
 	}
 )

@@ -1,10 +1,6 @@
 package v1alpha1
 
 import (
-	"encoding/json"
-	"fmt"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -17,41 +13,22 @@ type Metadata struct {
 type Helper struct {
 	Metadata `json:",inline"`
 
-	//HelperSpec   `json:"spec"`
-	//HelperStatus `json:"status"`
 	Person `json:"person"`
 
+	// Populated fields:
 	Expertises  []*Expertise `json:"expertises,omitempty" gorm:"many2many:helpers_expertises;"` // association_foreignkey:id;foreignkey:id;association_jointable_foreignkey:expertise_id;jointable_foreignkey:helper_id
 	Tasks       []*Task      `json:"tasks"`                                                     // one-to-many (has many, foreign key HelperID is in Task)
 	HelpSession *HelpSession `json:"helpSession,omitempty"`
 }
 
-/*type HelperSpec struct {
-	Person `json:"person"`
-}
-
-type HelperStatus struct {
-	//HelpSession *HelpSession `json:"helpSession,omitempty"` // one-to-one (has one, foreign key is in HelpSession)
-	//Tasks       []*Task      `json:"tasks"`       // one-to-many (has many, foreign key HelperID is in Task)
-}*/
-
 type Seeker struct {
 	Metadata `json:",inline"`
 
-	//SeekerSpec   `json:"spec"`
-	//SeekerStatus `json:"status"`
 	Person `json:"person"`
 
+	// Populated fields:
 	Tasks []*Task `json:"tasks"` // one-to-many (has many, foreign key SeekerID is in Task)
 }
-
-/*type SeekerSpec struct {
-	Person `json:"person"`
-}
-
-type SeekerStatus struct {
-	//Tasks []*Task `json:"tasks"` // one-to-many (has many, foreign key SeekerID is in Task)
-}*/
 
 type Person struct {
 	FirstName   string    `json:"firstName"`
@@ -72,64 +49,35 @@ type Address struct {
 
 type Location string
 
-type location struct {
-	Lat float64 `json:"lat"`
-	Lng float64 `json:"lng"`
-}
-
-func (l *Location) UnmarshalJSON(b []byte) error {
-	data := location{}
-	if err := json.Unmarshal(b, &data); err != nil {
-		return err
-	}
-	*l = Location(fmt.Sprintf("%f,%f", data.Lat, data.Lng))
-	return nil
-}
-
-func (l Location) MarshalJSON() ([]byte, error) {
-	parts := strings.Split(string(l), ",")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid location: %s", string(l))
-	}
-	lat, err := strconv.ParseFloat(parts[0], 64)
-	if err != nil {
-		return nil, err
-	}
-	lng, err := strconv.ParseFloat(parts[1], 64)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(location{
-		Lat: lat,
-		Lng: lng,
-	})
-}
-
 type Task struct {
 	Metadata `json:",inline"`
 
-	TaskSpec   `json:"spec"`
-	TaskStatus `json:"status"`
+	TaskRequest  `json:"request"`
+	TaskResponse `json:"response"`
 
+	// what seeker needs this help, (one-to-many, belongs-to)
 	SeekerID UID `json:"seekerID"`
-	HelperID UID `json:"helperID"`
+	// what kind of favor is needed (one-to-many, belongs-to)
+	FavorTypeID FavorTypeID `json:"favorTypeID"`
+	// what helper signed up to help (one-to-many, belongs-to)
+	HelperID *UID `json:"helperID"`
 
 	// Populated fields:
-	Seeker *Seeker `json:"seeker,omitempty"` // one-to-many
-	Helper *Helper `json:"helper,omitempty"` // one-to-many
+	Seeker    *Seeker    `json:"seeker,omitempty"`    // one-to-many
+	Helper    *Helper    `json:"helper,omitempty"`    // one-to-many
+	FavorType *FavorType `json:"favorType,omitempty"` // one-to-many
 }
 
-type TaskSpec struct {
-	FavorTypeID  FavorTypeID   `json:"favorType"`    // the kind of favor needed (one-to-many, belongs-to)
-	StartTime    time.Time     `json:"startTime"`    // from when the favor will be needed. TODO: Add to sketch
-	Duration     time.Duration `json:"duration"`     // how long it's expected to take
-	Instructions string        `json:"instructions"` // extra information about the request
-	// SeekerID       UID           `json:"seekerID"`       // what seeker needs this help, (one-to-many, belongs-to)
-	SeekerLocation Location `json:"seekerLocation"` // where the seeker needs this help
+type TaskRequest struct {
+	StartTime      time.Time     `json:"startTime"`      // from when the favor will be needed. TODO: Add to sketch
+	Duration       time.Duration `json:"duration"`       // how long it's expected to take
+	Instructions   string        `json:"instructions"`   // extra information about the request
+	SeekerLocation Location      `json:"seekerLocation"` // where the seeker needs this help
 	// Attachment for later
 }
 
 /*
+Seeker says they need help from this time (Start) ->
 (Propose seeker/helper match) ->
 Helper clicks "Start" (Match) ->
 Helper has arrived within 300m radius (Arrive) ->
@@ -142,13 +90,11 @@ AND/OR possibly
 When the Seeker has "accepted" the helper (Accept)
 */
 
-type TaskStatus struct {
+type TaskResponse struct {
 	MatchTime  *time.Time `json:"matchTime"`  // what time a "match" was created (i.e. when the helper clicked "Help")
 	ArriveTime *time.Time `json:"arriveTime"` // what time the helper arrived to the place
 	FinishTime *time.Time `json:"finishTime"` // what time the session ended
-	//AcceptTime *time.Time `json:"acceptTime"` // what time
 
-	//HelperID          *UID           `json:"helperID"`          // who's helping?
 	TransportDuration *time.Duration `json:"transportDuration"` // what's the expected time of transportation
 	HelperLocation    *Location      `json:"helperLocation"`    // what's the start location of the one helping
 
@@ -183,6 +129,7 @@ type FavorType struct {
 
 	// Populated fields:
 	HelpSessions []*HelpSession `json:"helpSessions,omitempty" gorm:"many2many:helpsessions_favortypes;"`
+	Tasks        []*Task        `json:"tasks,omitempty"`
 }
 
 type ExpertiseID string // computer, bike, carpenter skills
@@ -196,15 +143,5 @@ type Expertise struct {
 	FavorTypes []*FavorType `json:"favorTypes,omitempty" gorm:"many2many:favortypes_expertises;"` // preload
 	Helpers    []*Helper    `json:"helpers,omitempty" gorm:"many2many:helpers_expertises;"`       // preload // association_foreignkey:id;foreignkey:id;association_jointable_foreignkey:helper_id;jointable_foreignkey:expertise_id"
 }
-
-/*type TaskType string
-
-const (
-	TaskTypeGoSomewhere  TaskType = "GoSomewhere"  // ride/physical help to appointment, doctor, etc.
-	TaskTypeBuySomething TaskType = "BuySomething" // grocery, medicines, etc.
-	TaskTypeEasyOnline   TaskType = "EasyOnline"   // online tasks like log in to Kanta, the Bank, do shopping, etc.
-	TaskTypeTalk         TaskType = "Talk"         // just hang out :)
-
-)*/
 
 type UID uint64

@@ -9,5 +9,6 @@ require (
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/stretchr/testify v1.5.1 // indirect
-	googlemaps.github.io/maps v1.1.2
+	go.opencensus.io v0.22.3 // indirect
+	googlemaps.github.io/maps v1.2.0
 )

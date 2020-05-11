@@ -11,11 +11,13 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo"
+	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 	registerrest "github.com/thechosenoneneo/favor-giver/pkg/rest/register"
 )
 
 type resourceHandler struct {
 	res registerrest.Resource
+	gvk meta.GroupVersionKind
 }
 
 func (rh resourceHandler) Name() string {
@@ -40,7 +42,7 @@ func (rh resourceHandler) GetResource(c echo.Context) error {
 	if rh.dbForContext(cc).Where("id = ?", id).First(obj).RecordNotFound() {
 		return cc.Stringf(http.StatusBadRequest, "ID %q does not exist!", id)
 	}
-	return cc.JSONIndent(http.StatusOK, obj)
+	return cc.JSONIndent(http.StatusOK, obj, &rh.gvk)
 }
 
 func (rh resourceHandler) ListResource(c echo.Context) error {
@@ -49,7 +51,7 @@ func (rh resourceHandler) ListResource(c echo.Context) error {
 	if err := rh.dbForContext(cc).Find(list).Error; err != nil {
 		return cc.Errorf(http.StatusBadRequest, err)
 	}
-	return cc.JSONIndent(http.StatusOK, list)
+	return cc.JSONIndent(http.StatusOK, list, &rh.gvk)
 }
 
 func (rh resourceHandler) CreateResource(c echo.Context) error {
@@ -81,7 +83,7 @@ func (rh resourceHandler) CreateResource(c echo.Context) error {
 		return cc.Errorf(http.StatusBadRequest, err)
 	}
 
-	return cc.JSONIndent(http.StatusCreated, obj)
+	return cc.JSONIndent(http.StatusCreated, obj, &rh.gvk)
 }
 
 func (rh resourceHandler) DeleteResource(c echo.Context) error {
@@ -119,19 +121,20 @@ func (r *hijackReadCloser) HijackedContent() []byte {
 	return r.buf.Bytes()
 }
 
-func getFieldValue(obj interface{}, fieldName string) interface{} {
+func valueOf(obj interface{}) reflect.Value {
 	v := reflect.ValueOf(obj)
 	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+		return v.Elem()
 	}
-	return v.FieldByName(fieldName).Interface()
+	return v
+}
+
+func getFieldValue(obj interface{}, fieldName string) interface{} {
+	return valueOf(obj).FieldByName(fieldName).Interface()
 }
 
 func extractSlice(obj interface{}, fieldName string) []interface{} {
-	v := reflect.ValueOf(obj)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v := valueOf(obj)
 	f := v.FieldByName(fieldName)
 	if f.Kind() != reflect.Slice {
 		return nil
@@ -144,10 +147,7 @@ func extractSlice(obj interface{}, fieldName string) []interface{} {
 }
 
 func getFieldsWithTag(obj interface{}, tagKey string) map[string]string {
-	t := reflect.TypeOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
+	t := valueOf(obj).Type()
 
 	result := map[string]string{} // map field name to its tag value
 	for i := 0; i < t.NumField(); i++ {
@@ -161,10 +161,7 @@ func getFieldsWithTag(obj interface{}, tagKey string) map[string]string {
 }
 
 func getStructTags(obj interface{}, fieldName string) map[string]string {
-	t := reflect.TypeOf(obj)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
+	t := valueOf(obj).Type()
 	field, ok := t.FieldByName(fieldName)
 	if !ok {
 		panic("Field not found")

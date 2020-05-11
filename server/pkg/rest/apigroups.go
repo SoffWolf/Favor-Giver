@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
+	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 	registerrest "github.com/thechosenoneneo/favor-giver/pkg/rest/register"
 )
 
@@ -40,27 +41,26 @@ func (agh *APIGroupsHandler) Add(groupName, version string) (*APIGroupHandler, e
 
 func newAPIGroupHandler(groupsHandler *echo.Group, groupName, version string) *APIGroupHandler {
 	groupHandler := groupsHandler.Group(fmt.Sprintf("/%s/%s", groupName, version))
-	agh := &APIGroupHandler{groupName, version, groupHandler, make(map[string]*echo.Group)}
+	agh := &APIGroupHandler{meta.GroupVersion{GroupName: groupName, Version: version}, groupHandler, make(map[string]*echo.Group)}
 	groupHandler.GET("/", agh.Info)
 	return agh
 }
 
 type APIGroupHandler struct {
-	GroupName, Version string
-	groupHandler       *echo.Group
-	resources          map[string]*echo.Group
+	meta.GroupVersion
+	groupHandler *echo.Group
+	resources    map[string]*echo.Group
 }
 
 type apiGroupInfo struct {
-	GroupName string   `json:"groupName"`
-	Version   string   `json:"version"`
+	meta.GroupVersion `json:",inline"`
+
 	Resources []string `json:"resources"`
 }
 
 func (agh *APIGroupHandler) Info(c echo.Context) error {
 	agi := &apiGroupInfo{
-		GroupName: agh.GroupName,
-		Version:   agh.Version,
+		GroupVersion: agh.GroupVersion,
 	}
 	for name := range agh.resources {
 		agi.Resources = append(agi.Resources, name)
@@ -68,14 +68,14 @@ func (agh *APIGroupHandler) Info(c echo.Context) error {
 	return c.JSON(http.StatusOK, agi)
 }
 
-func (agh *APIGroupHandler) Add(resources ...registerrest.Resource) error { // TODO: Should be ...Resource
+func (agh *APIGroupHandler) Add(resources ...registerrest.Resource) error {
 	for _, r := range resources {
 		err := func(resource registerrest.Resource) error {
 			if _, ok := agh.resources[resource.Name()]; ok {
 				return fmt.Errorf("resource %s already exists!", resource.Name())
 			}
 
-			rh := resourceHandler{resource}
+			rh := resourceHandler{resource, agh.GroupVersion.WithKind(getObjectKind(resource.GetObject()))}
 			g := agh.groupHandler.Group("/" + resource.Name())
 			g.GET("/", rh.ListResource)
 			g.GET("/:id/", rh.GetResource)
@@ -93,4 +93,8 @@ func (agh *APIGroupHandler) Add(resources ...registerrest.Resource) error { // T
 	}
 
 	return nil
+}
+
+func getObjectKind(obj interface{}) string {
+	return valueOf(obj).Type().Name()
 }

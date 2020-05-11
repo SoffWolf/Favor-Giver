@@ -2,11 +2,14 @@ package rest
 
 import (
 	"fmt"
+	"log"
+	"reflect"
 	"strings"
 
 	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo"
 	"github.com/thechosenoneneo/favor-giver/pkg/db"
+	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 )
 
 type CustomContext struct {
@@ -23,7 +26,10 @@ func customContextMiddleware(db *db.Database) func(next echo.HandlerFunc) echo.H
 	}
 }
 
-func (cc *CustomContext) JSONIndent(code int, obj interface{}) error {
+func (cc *CustomContext) JSONIndent(code int, obj interface{}, gvk *meta.GroupVersionKind) error {
+	if gvk != nil {
+		setGVK(obj, *gvk)
+	}
 	return cc.JSONPretty(code, obj, "  ")
 }
 
@@ -40,4 +46,28 @@ func (cc *CustomContext) Errorf(code int, err error) error {
 
 func (cc *CustomContext) DB() *gorm.DB {
 	return cc.db.DB
+}
+
+func setGVK(obj interface{}, gvk meta.GroupVersionKind) {
+	if rm, ok := obj.(meta.ResourceMeta); ok {
+		rm.SetAPIVersion(gvk.APIVersion())
+		rm.SetKind(gvk.Kind)
+		return
+	}
+	v := valueOf(obj)
+	if v.Kind() != reflect.Slice {
+		log.Printf("requested a GVK set but was unable to")
+		return
+	}
+	for i := 0; i < v.Len(); i++ {
+		el := v.Index(i)
+		if el.CanInterface() {
+			if rm, ok := el.Interface().(meta.ResourceMeta); ok {
+				rm.SetAPIVersion(gvk.APIVersion())
+				rm.SetKind(gvk.Kind)
+				continue
+			}
+		}
+		log.Printf("requested a GVK set but was unable to for i=%d", i)
+	}
 }

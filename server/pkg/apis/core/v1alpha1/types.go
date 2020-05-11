@@ -2,6 +2,8 @@ package v1alpha1
 
 import (
 	"time"
+
+	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 )
 
 type Metadata struct {
@@ -11,7 +13,8 @@ type Metadata struct {
 }
 
 type Helper struct {
-	Metadata `json:",inline"`
+	*meta.TypeMeta `json:",inline"`
+	Metadata       `json:",inline"`
 
 	Person `json:"person"`
 
@@ -22,7 +25,8 @@ type Helper struct {
 }
 
 type Seeker struct {
-	Metadata `json:",inline"`
+	*meta.TypeMeta `json:",inline"`
+	Metadata       `json:",inline"`
 
 	Person `json:"person"`
 
@@ -50,7 +54,8 @@ type Address struct {
 type Location string
 
 type Task struct {
-	Metadata `json:",inline"`
+	*meta.TypeMeta `json:",inline"`
+	Metadata       `json:",inline"`
 
 	TaskRequest  `json:"request"`
 	TaskResponse `json:"response"`
@@ -107,7 +112,8 @@ type Review struct {
 }
 
 type HelpSession struct {
-	Metadata `json:",inline"`
+	*meta.TypeMeta `json:",inline"`
+	Metadata       `json:",inline"`
 
 	StartTime     time.Time     `json:"startTime"`
 	StartLocation Location      `json:"startLocation"`
@@ -122,6 +128,7 @@ type HelpSession struct {
 type FavorTypeID string // e.g. go shopping, talk, fix computer, fix bike,
 
 type FavorType struct {
+	*meta.TypeMeta   `json:",inline"`
 	ID               FavorTypeID  `json:"id"`                                                 // used as the name of the task type internally. Must be unique across the data set. E.g. "BuySomething"
 	ShortDescription string       `json:"shortDescription"`                                   // a short description of the task, e.g. "Buy something (groceries, medicines, etc.)"
 	LongDescription  string       `json:"longDescription"`                                    // a longer description which could be shown if the user presses an information button
@@ -135,6 +142,7 @@ type FavorType struct {
 type ExpertiseID string // computer, bike, carpenter skills
 
 type Expertise struct {
+	*meta.TypeMeta   `json:",inline"`
 	ID               ExpertiseID `json:"id"`               // used as the name of the task type internally. Must be unique across the data set. E.g. "BuySomething"
 	ShortDescription string      `json:"shortDescription"` // a short description of the task, e.g. "Buy something (groceries, medicines, etc.)"
 	LongDescription  string      `json:"longDescription"`  // a longer description which could be shown if the user presses an information button

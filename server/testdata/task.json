@@ -1,7 +1,6 @@
 {
     "seekerID": 1,
     "favorTypeID": "FixComputer",
-    "helperID": 1,
     "request": {
         "instructions": "Fix my computer please!",
         "seekerLocation": {

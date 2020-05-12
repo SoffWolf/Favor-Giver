@@ -1,0 +1,15 @@
+{
+    "person": {
+        "firstName": "First",
+        "lastName": "Last",
+        "phoneNumber": "044123",
+        "address": {
+            "address": "My home"
+        }
+    },
+    "expertises": [
+        {
+            "id": "Computer"
+        }
+    ]
+}

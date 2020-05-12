@@ -1,0 +1,13 @@
+{
+    "seekerID": 1,
+    "favorTypeID": "FixComputer",
+    "helperID": 1,
+    "request": {
+        "instructions": "Fix my computer please!",
+        "seekerLocation": {
+            "lat": 1,
+            "lng": 2
+        }
+    },
+    "response": {}
+}

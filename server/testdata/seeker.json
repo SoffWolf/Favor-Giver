@@ -1,0 +1,10 @@
+{
+    "person": {
+        "firstName": "One",
+        "lastName": "Seeker",
+        "phoneNumber": "04511111",
+        "address": {
+            "address": "My other home"
+        }
+    }
+}

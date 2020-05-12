@@ -1,9 +1,7 @@
 package rest
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"reflect"
@@ -13,7 +11,10 @@ import (
 	"github.com/labstack/echo"
 	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 	registerrest "github.com/thechosenoneneo/favor-giver/pkg/rest/register"
+	serializerpkg "github.com/thechosenoneneo/favor-giver/pkg/serializer"
 )
+
+var serializer = serializerpkg.NewDebugSerializer(ioutil.Discard)
 
 type resourceHandler struct {
 	res registerrest.Resource
@@ -26,9 +27,20 @@ func (rh resourceHandler) Name() string {
 
 func (rh resourceHandler) dbForContext(cc *CustomContext) *gorm.DB {
 	tx := cc.DB()
-	if cc.Request().Method == "GET" && cc.QueryParam("preload") == "true" {
-		for _, field := range rh.res.Preloads() {
-			tx = tx.Preload(field)
+	if cc.Request().Method == "GET" {
+		if cc.QueryParam("preload") == "true" {
+			for _, field := range rh.res.Preloads() {
+				tx = tx.Preload(field)
+			}
+		} else {
+			// Always load many-to-many relations
+			gormTags := getFieldsWithTag(rh.res.GetObject(), "gorm")
+			for fieldName, val := range gormTags {
+				if strings.Contains(val, "many2many") {
+					log.Printf("force preload %s", fieldName)
+					tx = tx.Preload(fieldName)
+				}
+			}
 		}
 	}
 	return tx
@@ -59,7 +71,7 @@ func (rh resourceHandler) CreateResource(c echo.Context) error {
 	obj := rh.res.GetObject()
 
 	// Always decode JSON
-	if err := decode(c.Request().Body, obj); err != nil {
+	if err := serializer.DecodeStreamInto(c.Request().Body, obj); err != nil {
 		return cc.Errorf(http.StatusBadRequest, err)
 	}
 
@@ -75,9 +87,14 @@ func (rh resourceHandler) CreateResource(c echo.Context) error {
 		}
 	}
 
-	/*if !cc.db.DB.NewRecord(obj) {
-		return cc.Stringf(http.StatusBadRequest, "Primary key field must be blank!")
-	}*/
+	// TODO: Wipe/sanitize updates to prepopulated fields
+
+	/*
+		TODO: Make this check possible
+		if !cc.db.DB.NewRecord(obj) {
+			return cc.Stringf(http.StatusBadRequest, "Primary key field must be blank!")
+		}
+	*/
 
 	if err := cc.db.DB.Create(obj).Error; err != nil {
 		return cc.Errorf(http.StatusBadRequest, err)
@@ -88,37 +105,9 @@ func (rh resourceHandler) CreateResource(c echo.Context) error {
 
 func (rh resourceHandler) DeleteResource(c echo.Context) error {
 	cc := c.(*CustomContext)
-	cc.db.DB.Delete(nil, c.Param("id"))
-	return c.NoContent(http.StatusOK)
-}
-
-func decode(rc io.ReadCloser, obj interface{}) (err error) {
-	hrc := &hijackReadCloser{rc, new(bytes.Buffer)}
-	d := json.NewDecoder(hrc)
-	d.DisallowUnknownFields()
-	err = d.Decode(obj)
-	out, _ := json.Marshal(obj)
-	log.Printf("Input data: %s, output: %s", hrc.HijackedContent(), out)
-	return
-}
-
-type hijackReadCloser struct {
-	rc  io.ReadCloser
-	buf *bytes.Buffer
-}
-
-func (r *hijackReadCloser) Read(p []byte) (n int, err error) {
-	n, err = r.rc.Read(p)
-	r.buf.Write(p)
-	return
-}
-
-func (r *hijackReadCloser) Close() error {
-	return r.rc.Close()
-}
-
-func (r *hijackReadCloser) HijackedContent() []byte {
-	return r.buf.Bytes()
+	obj := rh.res.GetObject()
+	cc.db.DB.Delete(obj, c.Param("id"))
+	return c.NoContent(http.StatusNoContent)
 }
 
 func valueOf(obj interface{}) reflect.Value {
@@ -135,13 +124,20 @@ func getFieldValue(obj interface{}, fieldName string) interface{} {
 
 func extractSlice(obj interface{}, fieldName string) []interface{} {
 	v := valueOf(obj)
-	f := v.FieldByName(fieldName)
-	if f.Kind() != reflect.Slice {
+	// if fieldname is set, use a struct field. otherwise, assume obj is a slice
+	if len(fieldName) != 0 {
+		v = v.FieldByName(fieldName)
+	}
+
+	// If the given value already is a struct object, return it directly as a list
+	if v.Kind() == reflect.Struct {
+		return []interface{}{v.Interface()}
+	} else if v.Kind() != reflect.Slice {
 		return nil
 	}
-	arr := make([]interface{}, 0, f.Len())
-	for i := 0; i < f.Len(); i++ {
-		arr = append(arr, f.Index(i).Interface())
+	arr := make([]interface{}, 0, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		arr = append(arr, v.Index(i).Interface())
 	}
 	return arr
 }

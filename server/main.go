@@ -7,7 +7,10 @@ import (
 	"syscall"
 
 	api "github.com/thechosenoneneo/favor-giver/pkg/apis/core/v1alpha1"
+	"github.com/thechosenoneneo/favor-giver/pkg/client"
 	dbpkg "github.com/thechosenoneneo/favor-giver/pkg/db"
+	"github.com/thechosenoneneo/favor-giver/pkg/matcher"
+	"github.com/thechosenoneneo/favor-giver/pkg/matcher/location/route"
 	"github.com/thechosenoneneo/favor-giver/pkg/rest"
 )
 
@@ -27,13 +30,19 @@ func run() error {
 
 	s := rest.NewRESTServer(":8080", db)
 
+	c := client.NewClient("http://localhost:8080", api.GroupVersion, api.GetResources()...)
+
+	// Start matching thread non-blocking
+	m := matcher.NewMatcher(c, route.NewMockDistanceCalculator())
+	m.Start()
+
 	apiGroups := rest.NewAPIGroupsHandler(s.Echo())
 	api.RegisterREST(apiGroups)
 
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	ch := make(chan os.Signal)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-c
+		<-ch
 		log.Printf("Caught exit signal, stopping...")
 		if err := db.DB.Close(); err != nil {
 			log.Fatal(err)

@@ -60,7 +60,7 @@ func setGVK(obj interface{}, gvk meta.GroupVersionKind) {
 		return
 	}
 	for i := 0; i < v.Len(); i++ {
-		el := v.Index(i)
+		el := v.Index(i) // TODO: Use reflect.PtrTo() here so we don't need to embed TypeMeta as a pointer
 		if el.CanInterface() {
 			if rm, ok := el.Interface().(meta.ResourceMeta); ok {
 				rm.SetAPIVersion(gvk.APIVersion())

@@ -66,11 +66,14 @@ type Task struct {
 	FavorTypeID FavorTypeID `json:"favorTypeID"`
 	// what helper signed up to help (one-to-many, belongs-to)
 	HelperID *UID `json:"helperID"`
+	// what help session this was matched to, one-to-one
+	HelpSessionID *UID `json:"helpSessionID"`
 
 	// Populated fields:
-	Seeker    *Seeker    `json:"seeker,omitempty"`    // one-to-many
-	Helper    *Helper    `json:"helper,omitempty"`    // one-to-many
-	FavorType *FavorType `json:"favorType,omitempty"` // one-to-many
+	Seeker      *Seeker      `json:"seeker,omitempty"`    // one-to-many
+	Helper      *Helper      `json:"helper,omitempty"`    // one-to-many
+	FavorType   *FavorType   `json:"favorType,omitempty"` // one-to-many
+	HelpSession *HelpSession `json:"helpSession"`         // one-to-one
 }
 
 type TaskRequest struct {
@@ -115,14 +118,17 @@ type HelpSession struct {
 	*meta.TypeMeta `json:",inline"`
 	Metadata       `json:",inline"`
 
+	// StartTime denotes from what time the helper is available
 	StartTime     time.Time     `json:"startTime"`
 	StartLocation Location      `json:"startLocation"`
 	Duration      time.Duration `json:"duration"`
 	FavorTypes    []*FavorType  `json:"favorTypes" gorm:"many2many:helpsessions_favortypes;"`
 	HelperID      UID           `json:"helperID"` // one-to-one (belongs to Helper)
+	TaskID        *UID          `json:"taskID"`   // one-to-one (belongs to Task)
 
 	// Populated fields:
 	Helper *Helper `json:"helper,omitempty"`
+	Task   *Task   `json:"task,omitempty"`
 }
 
 type FavorTypeID string // e.g. go shopping, talk, fix computer, fix bike,

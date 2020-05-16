@@ -13,20 +13,24 @@ type DistanceResponse struct {
 	Kilometers float64
 }
 
-func NewDistanceCalculator(mapsAPIKey string) (*DistanceCalculator, error) {
+func NewDistanceCalculator(mapsAPIKey string) (DistanceCalculator, error) {
 	c, err := maps.NewClient(maps.WithAPIKey(mapsAPIKey))
 	if err != nil {
 		return nil, err
 	}
 
-	return &DistanceCalculator{c}, nil
+	return &distanceCalculator{c}, nil
 }
 
-type DistanceCalculator struct {
+type DistanceCalculator interface {
+	GetDistance(from, to string) (*DistanceResponse, error)
+}
+
+type distanceCalculator struct {
 	c *maps.Client
 }
 
-func (dc *DistanceCalculator) GetDistance(from, to string) (*DistanceResponse, error) {
+func (dc *distanceCalculator) GetDistance(from, to string) (*DistanceResponse, error) {
 	routes, _, err := dc.c.Directions(context.Background(), &maps.DirectionsRequest{
 		Origin:      from,
 		Destination: to,

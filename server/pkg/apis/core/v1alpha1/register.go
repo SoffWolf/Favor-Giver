@@ -1,11 +1,10 @@
 package v1alpha1
 
 import (
-	"net/http"
-
 	"github.com/labstack/echo"
 	"github.com/thechosenoneneo/favor-giver/pkg/db"
 	"github.com/thechosenoneneo/favor-giver/pkg/rest"
+	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 	registerrest "github.com/thechosenoneneo/favor-giver/pkg/rest/register"
 )
 
@@ -15,6 +14,11 @@ const (
 )
 
 var (
+	GroupVersion = meta.GroupVersion{
+		GroupName: GroupName,
+		Version:   Version,
+	}
+
 	resources = []registerrest.Resource{
 		registerrest.NewResource(
 			"expertises",
@@ -58,14 +62,9 @@ var (
 				return &[]Task{}
 			},
 			map[string]echo.HandlerFunc{
-				"": func(c echo.Context) error {
-					return c.String(http.StatusOK, "Hello from PUT subresource ''")
-				},
-				"foo": func(c echo.Context) error {
-					return c.String(http.StatusOK, "Hello from PUT subresource 'foo'")
-				},
+				"match": SubResourceTasksMatch,
 			},
-			[]string{"Helper", "Seeker", "FavorType"},
+			[]string{"Helper", "Seeker", "FavorType", "HelpSession"},
 		),
 		registerrest.NewResource(
 			"helpsessions",
@@ -76,7 +75,7 @@ var (
 				return &[]HelpSession{}
 			},
 			nil,
-			[]string{"FavorTypes", "Helper"},
+			[]string{"FavorTypes", "Helper", "Task"},
 		),
 		registerrest.NewResource(
 			"favortypes",
@@ -105,4 +104,8 @@ func RegisterDB(db *db.Database) {
 	for _, resource := range resources {
 		db.DB.AutoMigrate(resource.GetObject())
 	}
+}
+
+func GetResources() []registerrest.Resource {
+	return resources
 }

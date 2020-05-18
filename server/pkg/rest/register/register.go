@@ -44,3 +44,11 @@ func (r *resource) Preloads() []string {
 func NewResource(name string, getObj func() interface{}, getList func() interface{}, updateHandlers UpdateHandlerMap, preloads []string) Resource {
 	return &resource{name, getObj, getList, updateHandlers, preloads}
 }
+
+type APIGroupsHandler interface {
+	Add(groupName, version string) (APIGroupHandler, error)
+}
+
+type APIGroupHandler interface {
+	Add(resources ...Resource) error
+}

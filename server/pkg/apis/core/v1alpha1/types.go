@@ -34,14 +34,38 @@ type Seeker struct {
 	Tasks []*Task `json:"tasks"` // one-to-many (has many, foreign key SeekerID is in Task)
 }
 
+type Gender string
+
+const (
+	GenderMale   Gender = "Male"
+	GenderFemale Gender = "Female"
+	GenderOther  Gender = "Other"
+)
+
 type Person struct {
 	FirstName   string    `json:"firstName"`
 	LastName    string    `json:"lastName"`
 	BirthDate   time.Time `json:"birthDate"`
 	PhoneNumber string    `json:"phoneNumber"` // TODO: Add to sketch
 	Biography   string    `json:"biography"`
+	Gender      Gender    `json:"gender"`
+	Email       string    `json:"email"`
 
 	Address `json:"address"`
+	Login   Login `json:"-"`
+}
+
+// TODO: Move packages?
+type Login struct {
+	*meta.TypeMeta `json:",inline"` // if mistakenly serialized to JSON, show the TypeMeta but not more
+
+	Email     string    `json:"-" gorm:"primary_key"`
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+
+	Salt      string `json:"-"` // 32-byte random slice, hex-encoded string (64-char long)
+	Hash      string `json:"-"` // string encoded as <hash-alg>:<hash-digest of H(salt + email + password), hex-encoded>
+	SessionID string `json:"-"` // 64-byte random session ID, hex-encoded (128-char long). Used for one JWT token per user
 }
 
 type Address struct {

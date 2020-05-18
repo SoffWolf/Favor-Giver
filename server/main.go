@@ -28,13 +28,17 @@ func run() error {
 
 	api.RegisterDB(db)
 
-	s := rest.NewRESTServer(":8080", db)
+	s, err := rest.NewRESTServer(":8080", db)
+	if err != nil {
+		return err
+	}
 
 	c := client.NewClient("http://localhost:8080", api.GroupVersion, api.GetResources()...)
 
 	// Start matching thread non-blocking
-	m := matcher.NewMatcher(c, route.NewMockDistanceCalculator())
-	m.Start()
+	// TODO: Re-enable the matcher thread
+	_ = matcher.NewMatcher(c, route.NewMockDistanceCalculator())
+	//m.Start()
 
 	apiGroups := rest.NewAPIGroupsHandler(s.Echo())
 	api.RegisterREST(apiGroups)

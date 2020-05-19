@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -55,7 +56,30 @@ func jwtAuthMiddleware() func(next echo.HandlerFunc) echo.HandlerFunc {
 	return middleware.JWTWithConfig(middleware.JWTConfig{
 		SigningKey:    privateKey,
 		SigningMethod: signingMethod.Name,
+		Claims:        &jwtCustomClaims{},
 	})
+}
+
+func sessionAuthMiddleware() func(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			cc := c.(*CustomContext)
+			user, ok := c.Get("user").(*jwt.Token)
+			if !ok {
+				return fmt.Errorf("expected user data post-authentication")
+			}
+			claims, ok := user.Claims.(*jwtCustomClaims)
+			if !ok {
+				return fmt.Errorf("couldn't get custom claims")
+			}
+
+			if cc.DB().Find(&db.Account{}, "session_id = ?", claims.Id).RecordNotFound() {
+				log.Printf("did not find account with session_id: %s", claims.Id)
+				return echo.ErrUnauthorized
+			}
+			return next(c)
+		}
+	}
 }
 
 func login(c echo.Context) error {

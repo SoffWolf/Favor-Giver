@@ -78,6 +78,7 @@ func (agh *APIGroupHandler) Add(resources ...registerrest.Resource) error {
 			rh := resourceHandler{resource, agh.GroupVersion.WithKind(getObjectKind(resource.GetObject()))}
 			g := agh.groupHandler.Group("/" + resource.Name())
 			g.Use(jwtAuthMiddleware())
+			g.Use(sessionAuthMiddleware())
 			g.GET("/", rh.ListResource)
 			g.GET("/:id/", rh.GetResource)
 			g.POST("/", rh.CreateResource)

@@ -1,16 +1,13 @@
 package rest
 
 import (
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
+	"log"
 	"net/http"
-	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/thechosenoneneo/favor-giver/pkg/apis/core/v1alpha1"
+	"github.com/thechosenoneneo/favor-giver/pkg/db"
 	"github.com/thechosenoneneo/favor-giver/pkg/rest/hash"
 )
 
@@ -50,11 +47,8 @@ var (
 )
 
 const (
-	defaultAlgo        = hash.SHA3_512
-	sessionIDBytes     = 32
-	saltBytes          = 32
-	favorGiverIssuer   = "favor-giver"
-	tokenValidDuration = 24 * time.Hour
+	defaultAlgo      = hash.SHA3_512
+	favorGiverIssuer = "favor-giver"
 )
 
 func jwtAuthMiddleware() func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -66,37 +60,49 @@ func jwtAuthMiddleware() func(next echo.HandlerFunc) echo.HandlerFunc {
 
 func login(c echo.Context) error {
 	cc := c.(*CustomContext)
-	email := c.FormValue("email")
-	if len(email) == 0 {
-		return echo.ErrUnauthorized
-	}
-	password := c.FormValue("password")
-	if len(password) == 0 {
-		return echo.ErrUnauthorized
-	}
-
-	login := &v1alpha1.Login{}
-	if cc.DB().Find(login, "email = ?", email).RecordNotFound() {
-		return echo.ErrUnauthorized
-	}
-
-	payload := []byte(fmt.Sprintf("%s%s%s", login.Salt, login.Email, password))
-
-	if !hasher.Verify(login.Hash, payload) {
-		return echo.ErrUnauthorized
-	}
-
-	signedToken, sessID, err := newJWTToken()
+	// Aquire email and password from the request
+	email, password, err := cc.EmailAndPassword()
 	if err != nil {
+		log.Printf("email/password not valid: %v", err)
 		return err
 	}
 
-	// if an user logs in twice, the older session ID is invalidated (hmm, is this good?)
-	login.SessionID = sessID
-	if err := cc.DB().Save(login).Error; err != nil {
+	// Load the account record by email
+	account := &db.Account{}
+	if cc.DB().Find(account, "email = ?", email).RecordNotFound() {
+		log.Printf("no such email found: %s", email)
+		return echo.ErrUnauthorized
+	}
+
+	// Verify that the password is correct
+	if err := account.VerifyPassword(password); err != nil {
+		log.Printf("verify password error: %v", err)
+		return echo.ErrUnauthorized
+	}
+
+	// Create a new session for the user
+	sess, modified, err := account.GetSession()
+	if err != nil {
+		log.Printf("get session error: %v", err)
 		return err
 	}
 
+	// Save the record in the database, in case the session was changed
+	if modified {
+		if err := cc.DB().Save(account).Error; err != nil {
+			log.Printf("save to database error: %v", err)
+			return err
+		}
+	}
+
+	// Create a new or regenerate an existing token based on that session information
+	signedToken, err := newJWTToken(sess)
+	if err != nil {
+		log.Printf("sign token error: %v", err)
+		return err
+	}
+
+	// Return the token
 	return c.JSON(http.StatusOK, echo.Map{
 		"token": signedToken,
 	})
@@ -104,40 +110,45 @@ func login(c echo.Context) error {
 
 func register(c echo.Context) error {
 	cc := c.(*CustomContext)
-	email := c.FormValue("email")
-	if len(email) == 0 {
-		return echo.ErrUnauthorized
-	}
-	password := c.FormValue("password")
-	if len(password) == 0 {
-		return echo.ErrUnauthorized
+	// Aquire email and password from the request
+	email, password, err := cc.EmailAndPassword()
+	if err != nil {
+		return err
 	}
 
-	login := &v1alpha1.Login{
+	// Error out if there's already an email address with this token!
+	if !cc.DB().Find(&db.Account{}, "email = ?", email).RecordNotFound() {
+		return echo.ErrBadRequest
+	}
+
+	account := &db.Account{
 		Email: email,
 	}
 
-	salt, err := genRandom(saltBytes)
-	if err != nil {
-		return err
-	}
-	login.Salt = hex.EncodeToString(salt)
-	payload := []byte(fmt.Sprintf("%s%s%s", login.Salt, login.Email, password))
-
-	obj := hasher.Hash(defaultAlgo, payload)
-	if obj == nil {
-		return fmt.Errorf("couldn't hash object")
-	}
-	login.Hash = obj.String()
-
-	signedToken, sessID, err := newJWTToken()
-	if err != nil {
+	// Set the Salt field
+	if err := account.PopulateSalt(); err != nil {
 		return err
 	}
 
-	login.SessionID = sessID
+	// Set the Hash field (i.e. store the password)
+	if err := account.SetPassword(defaultAlgo, password); err != nil {
+		return err
+	}
 
-	if err := cc.DB().Save(login).Error; err != nil {
+	// Create a new session for the user
+	sess, _, err := account.GetSession()
+	if err != nil {
+		return err
+	}
+
+	// Save the record in the database
+	if err := cc.DB().Save(account).Error; err != nil {
+		return err
+	}
+
+	// Create a new token based on that session information
+	signedToken, err := newJWTToken(sess)
+	if err != nil {
 		return err
 	}
 
@@ -146,38 +157,16 @@ func register(c echo.Context) error {
 	})
 }
 
-func newJWTToken() (signedToken string, sessID string, err error) {
-	sessIDBytes, err := genRandom(sessionIDBytes)
-	if err != nil {
-		return
-	}
-	sessID = hex.EncodeToString(sessIDBytes)
-
-	now := time.Now()
+func newJWTToken(sess *db.Session) (string, error) {
 	claims := &jwtCustomClaims{
 		jwt.StandardClaims{
-			ExpiresAt: now.Add(tokenValidDuration).Unix(),
-			IssuedAt:  now.Unix(),
-			NotBefore: now.Unix(),
-			Id:        sessID,
+			ExpiresAt: sess.ValidUntil().Unix(),
+			IssuedAt:  sess.SessionStart.Unix(),
+			NotBefore: sess.SessionStart.Unix(),
+			Id:        sess.SessionID,
 			Issuer:    favorGiverIssuer,
 		},
 	}
 
-	token := jwt.NewWithClaims(signingMethod, claims)
-
-	signedToken, err = token.SignedString(privateKey)
-	return
-}
-
-func genRandom(numBytes int) ([]byte, error) {
-	b := make([]byte, numBytes)
-	n, err := rand.Read(b)
-	if err != nil {
-		return nil, err
-	}
-	if n != numBytes {
-		return nil, fmt.Errorf("not enough bytes read from random generator")
-	}
-	return b, nil
+	return jwt.NewWithClaims(signingMethod, claims).SignedString(privateKey)
 }

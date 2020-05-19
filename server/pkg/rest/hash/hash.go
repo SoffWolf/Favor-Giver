@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
@@ -78,7 +79,7 @@ func (h hasher) Verify(objectStr string, payload []byte) bool {
 	if len(parts) != 2 {
 		return false
 	}
-	chosenAlgo := Algorithm(parts[1])
+	chosenAlgo := Algorithm(parts[0])
 	hashFn, ok := hashers[chosenAlgo]
 	if !ok {
 		return false
@@ -134,4 +135,16 @@ func EqualObjects(a, b Object) bool {
 		return false
 	}
 	return a.String() == b.String()
+}
+
+func GenerateRandomBytes(numBytes int) ([]byte, error) {
+	b := make([]byte, numBytes)
+	n, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	if n != numBytes {
+		return nil, fmt.Errorf("not enough bytes read from random generator")
+	}
+	return b, nil
 }

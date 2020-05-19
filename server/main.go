@@ -35,10 +35,15 @@ func run() error {
 
 	c := client.NewClient("http://localhost:8080", api.GroupVersion, api.GetResources()...)
 
+	token, err := rest.NewLoopbackRootJWTToken()
+	if err != nil {
+		return err
+	}
+	c.SetJWTToken(token)
+
 	// Start matching thread non-blocking
-	// TODO: Re-enable the matcher thread
-	_ = matcher.NewMatcher(c, route.NewMockDistanceCalculator())
-	//m.Start()
+	m := matcher.NewMatcher(c, route.NewMockDistanceCalculator())
+	m.Start()
 
 	apiGroups := rest.NewAPIGroupsHandler(s.Echo())
 	api.RegisterREST(apiGroups)

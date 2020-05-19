@@ -1,9 +1,12 @@
 package rest
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
@@ -34,12 +37,12 @@ func initRSAKey() (err error) {
 
 type jwtCustomClaims struct {
 	//Name  string `json:"name"`
-	//Admin bool   `json:"admin"`
 	jwt.StandardClaims
 }
 
 var (
-	hasher = hash.NewHasher()
+	loopbackJWTs = &sync.Map{}
+
 	// signingMethod = jwt.SigningMethodRS512
 	// privateKey *rsa.PrivateKey
 
@@ -48,8 +51,9 @@ var (
 )
 
 const (
-	defaultAlgo      = hash.SHA3_512
-	favorGiverIssuer = "favor-giver"
+	defaultAlgo              = hash.SHA3_512
+	favorUserGiverIssuer     = "favor-giver-user"
+	favorLoopbackGiverIssuer = "favor-giver-loopback"
 )
 
 func jwtAuthMiddleware() func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -73,10 +77,21 @@ func sessionAuthMiddleware() func(next echo.HandlerFunc) echo.HandlerFunc {
 				return fmt.Errorf("couldn't get custom claims")
 			}
 
-			if cc.DB().Find(&db.Account{}, "session_id = ?", claims.Id).RecordNotFound() {
-				log.Printf("did not find account with session_id: %s", claims.Id)
+			switch claims.Issuer {
+			case favorUserGiverIssuer:
+				if cc.DB().Find(&db.Account{}, "session_id = ?", claims.Id).RecordNotFound() {
+					log.Printf("did not find a user account with session_id: %s", claims.Id)
+					return echo.ErrUnauthorized
+				}
+			case favorLoopbackGiverIssuer:
+				if _, ok := loopbackJWTs.Load(claims.Id); !ok {
+					log.Printf("did not find a loopback account with session_id: %s", claims.Id)
+					return echo.ErrUnauthorized
+				}
+			default:
 				return echo.ErrUnauthorized
 			}
+
 			return next(c)
 		}
 	}
@@ -120,7 +135,7 @@ func login(c echo.Context) error {
 	}
 
 	// Create a new or regenerate an existing token based on that session information
-	signedToken, err := newJWTToken(sess)
+	signedToken, err := NewUserJWTToken(sess)
 	if err != nil {
 		log.Printf("sign token error: %v", err)
 		return err
@@ -171,7 +186,7 @@ func register(c echo.Context) error {
 	}
 
 	// Create a new token based on that session information
-	signedToken, err := newJWTToken(sess)
+	signedToken, err := NewUserJWTToken(sess)
 	if err != nil {
 		return err
 	}
@@ -181,16 +196,40 @@ func register(c echo.Context) error {
 	})
 }
 
-func newJWTToken(sess *db.Session) (string, error) {
+func NewUserJWTToken(sess *db.Session) (string, error) {
 	claims := &jwtCustomClaims{
 		jwt.StandardClaims{
 			ExpiresAt: sess.ValidUntil().Unix(),
 			IssuedAt:  sess.SessionStart.Unix(),
 			NotBefore: sess.SessionStart.Unix(),
 			Id:        sess.SessionID,
-			Issuer:    favorGiverIssuer,
+			Issuer:    favorUserGiverIssuer,
 		},
 	}
+
+	return jwt.NewWithClaims(signingMethod, claims).SignedString(privateKey)
+}
+
+// NewLoopbackRootJWTToken creates a new JWT root token used for "loopback" purposes
+//
+func NewLoopbackRootJWTToken() (string, error) {
+	b, err := hash.GenerateRandomBytes(db.SessionIDBytes)
+	if err != nil {
+		return "", err
+	}
+	kid := hex.EncodeToString(b)
+	claims := &jwtCustomClaims{
+		jwt.StandardClaims{
+			// Never expires. This could be done better!
+			IssuedAt:  time.Now().Unix(),
+			NotBefore: time.Now().Unix(),
+			Id:        kid,
+			Issuer:    favorLoopbackGiverIssuer,
+		},
+	}
+
+	// Store the loopback JWT key ID in the map, for later authentication
+	loopbackJWTs.Store(kid, true)
 
 	return jwt.NewWithClaims(signingMethod, claims).SignedString(privateKey)
 }

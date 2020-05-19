@@ -20,6 +20,7 @@ package meta
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -32,6 +33,25 @@ import (
 // +protobuf.options.(gogoproto.goproto_stringer)=false
 type Time struct {
 	time.Time `protobuf:"-"`
+}
+
+func (t *Time) Scan(src interface{}) error {
+	t1, ok := src.(*time.Time)
+	if ok {
+		*t = Time{
+			Time: *t1,
+		}
+		return nil
+	}
+	t2, ok2 := src.(time.Time)
+	if ok2 {
+		*t = Time{
+			Time: t2,
+		}
+		return nil
+
+	}
+	return fmt.Errorf("can't cast src to time.Time: %v", src)
 }
 
 // DeepCopyInto creates a deep-copy of the Time value.  The underlying time.Time

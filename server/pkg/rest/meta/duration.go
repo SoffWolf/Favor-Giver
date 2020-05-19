@@ -20,6 +20,7 @@ package meta
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -28,6 +29,25 @@ import (
 // can be used as map keys in json.
 type Duration struct {
 	time.Duration `protobuf:"varint,1,opt,name=duration,casttype=time.Duration"`
+}
+
+func (d *Duration) Scan(src interface{}) error {
+	d1, ok := src.(*time.Duration)
+	if ok {
+		*d = Duration{
+			Duration: *d1,
+		}
+		return nil
+	}
+	d2, ok2 := src.(time.Duration)
+	if ok2 {
+		*d = Duration{
+			Duration: d2,
+		}
+		return nil
+
+	}
+	return fmt.Errorf("can't cast src to time.Duration: %v", src)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface.

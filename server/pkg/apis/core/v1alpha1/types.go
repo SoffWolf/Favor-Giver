@@ -1,15 +1,13 @@
 package v1alpha1
 
 import (
-	"time"
-
 	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 )
 
 type Metadata struct {
 	ID        UID       `json:"id"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt meta.Time `json:"createdAt"`
+	UpdatedAt meta.Time `json:"updatedAt"`
 }
 
 type Helper struct {
@@ -45,7 +43,7 @@ const (
 type Person struct {
 	FirstName   string    `json:"firstName"`
 	LastName    string    `json:"lastName"`
-	BirthDate   time.Time `json:"birthDate"`
+	BirthDate   meta.Time `json:"birthDate"`
 	PhoneNumber string    `json:"phoneNumber"` // TODO: Add to sketch
 	Biography   string    `json:"biography"`
 	Gender      Gender    `json:"gender"`
@@ -87,8 +85,8 @@ type Task struct {
 }
 
 type TaskRequest struct {
-	StartTime      time.Time     `json:"startTime"`      // from when the favor will be needed. TODO: Add to sketch
-	Duration       time.Duration `json:"duration"`       // how long it's expected to take
+	StartTime      meta.Time     `json:"startTime"`      // from when the favor will be needed. TODO: Add to sketch
+	Duration       meta.Duration `json:"duration"`       // how long it's expected to take
 	Instructions   string        `json:"instructions"`   // extra information about the request
 	SeekerLocation Location      `json:"seekerLocation"` // where the seeker needs this help
 	// Attachment for later
@@ -109,11 +107,11 @@ When the Seeker has "accepted" the helper (Accept)
 */
 
 type TaskResponse struct {
-	MatchTime  *time.Time `json:"matchTime"`  // what time a "match" was created (i.e. when the helper clicked "Help")
-	ArriveTime *time.Time `json:"arriveTime"` // what time the helper arrived to the place
-	FinishTime *time.Time `json:"finishTime"` // what time the session ended
+	MatchTime  *meta.Time `json:"matchTime"`  // what time a "match" was created (i.e. when the helper clicked "Help")
+	ArriveTime *meta.Time `json:"arriveTime"` // what time the helper arrived to the place
+	FinishTime *meta.Time `json:"finishTime"` // what time the session ended
 
-	TransportDuration *time.Duration `json:"transportDuration"` // what's the expected time of transportation
+	TransportDuration *meta.Duration `json:"transportDuration"` // what's the expected time of transportation
 	HelperLocation    *Location      `json:"helperLocation"`    // what's the start location of the one helping
 
 	//*Review `json:"helperReview"`
@@ -129,9 +127,9 @@ type HelpSession struct {
 	Metadata       `json:",inline"`
 
 	// StartTime denotes from what time the helper is available
-	StartTime     time.Time     `json:"startTime"`
+	StartTime     meta.Time     `json:"startTime"`
 	StartLocation Location      `json:"startLocation"`
-	Duration      time.Duration `json:"duration"`
+	Duration      meta.Duration `json:"duration"`
 	FavorTypes    []*FavorType  `json:"favorTypes" gorm:"many2many:helpsessions_favortypes;"`
 	HelperID      UID           `json:"helperID"` // one-to-one (belongs to Helper)
 	TaskID        *UID          `json:"taskID"`   // one-to-one (belongs to Task)

@@ -21,6 +21,7 @@ package meta
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -45,7 +46,21 @@ func (d *Duration) Scan(src interface{}) error {
 			Duration: d2,
 		}
 		return nil
-
+	}
+	srcstr := fmt.Sprintf("%v", src)
+	d3, err := time.ParseDuration(srcstr)
+	if err == nil {
+		*d = Duration{
+			Duration: d3,
+		}
+		return nil
+	}
+	d4, err := strconv.ParseUint(srcstr, 10, 64)
+	if err == nil {
+		*d = Duration{
+			Duration: time.Duration(d4),
+		}
+		return nil
 	}
 	return fmt.Errorf("can't cast src to time.Duration: %v", src)
 }

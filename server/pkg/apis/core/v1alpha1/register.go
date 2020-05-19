@@ -103,8 +103,6 @@ func RegisterDB(db *db.Database) {
 	for _, resource := range resources {
 		db.DB.AutoMigrate(resource.GetObject())
 	}
-	// Make an exception for Login
-	db.DB.AutoMigrate(&Login{})
 }
 
 func GetResources() []registerrest.Resource {

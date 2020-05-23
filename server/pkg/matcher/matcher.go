@@ -106,8 +106,8 @@ func (m *Matcher) reconcile() error {
 				}
 
 				// check that helper has time
-				helperEndTime := helpSession.StartTime.UTC().Add(helpSession.Duration)
-				taskEndTime := time.Now().UTC().Add(resp.Time).Add(task.TaskRequest.Duration)
+				helperEndTime := helpSession.StartTime.UTC().Add(helpSession.Duration.Duration)
+				taskEndTime := time.Now().UTC().Add(resp.Time).Add(task.TaskRequest.Duration.Duration)
 				if taskEndTime.After(helperEndTime) {
 					log.Printf("task %d would take until %s, whereas helpsession %d is only valid %s", task.ID, taskEndTime, helpSession.ID, helperEndTime)
 					continue

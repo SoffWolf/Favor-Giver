@@ -28,9 +28,18 @@ func run() error {
 
 	api.RegisterDB(db)
 
-	s := rest.NewRESTServer(":8080", db)
+	s, err := rest.NewRESTServer(":8080", db)
+	if err != nil {
+		return err
+	}
 
 	c := client.NewClient("http://localhost:8080", api.GroupVersion, api.GetResources()...)
+
+	token, err := rest.NewLoopbackRootJWTToken()
+	if err != nil {
+		return err
+	}
+	c.SetJWTToken(token)
 
 	// Start matching thread non-blocking
 	m := matcher.NewMatcher(c, route.NewMockDistanceCalculator())

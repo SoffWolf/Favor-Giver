@@ -48,6 +48,17 @@ func (cc *CustomContext) DB() *gorm.DB {
 	return cc.db.DB
 }
 
+func (cc *CustomContext) EmailAndPassword() (email, password string, err error) {
+	email = cc.FormValue("email")
+	password = cc.FormValue("password")
+	if len(email) == 0 || len(password) == 0 {
+		err = echo.ErrUnauthorized
+	}
+	// TODO: Verify/parse the email, and make sure the password is of a certain length
+	// Also check upper bounds on the lengths to prevent sending a super-long password to DoS
+	return
+}
+
 func setGVK(obj interface{}, gvk meta.GroupVersionKind) {
 	if rm, ok := obj.(meta.ResourceMeta); ok {
 		rm.SetAPIVersion(gvk.APIVersion())

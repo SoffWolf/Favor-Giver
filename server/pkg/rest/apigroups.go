@@ -29,7 +29,7 @@ func (agh *APIGroupsHandler) Info(c echo.Context) error {
 	return c.JSON(http.StatusOK, apiGroupNames)
 }
 
-func (agh *APIGroupsHandler) Add(groupName, version string) (*APIGroupHandler, error) {
+func (agh *APIGroupsHandler) Add(groupName, version string) (registerrest.APIGroupHandler, error) {
 	groupPath := fmt.Sprintf("%s/%s", groupName, version)
 	if _, ok := agh.apiGroups[groupPath]; ok {
 		return nil, fmt.Errorf("group %s already exists!", groupPath)
@@ -77,6 +77,8 @@ func (agh *APIGroupHandler) Add(resources ...registerrest.Resource) error {
 
 			rh := resourceHandler{resource, agh.GroupVersion.WithKind(getObjectKind(resource.GetObject()))}
 			g := agh.groupHandler.Group("/" + resource.Name())
+			g.Use(jwtAuthMiddleware())
+			g.Use(sessionAuthMiddleware())
 			g.GET("/", rh.ListResource)
 			g.GET("/:id/", rh.GetResource)
 			g.POST("/", rh.CreateResource)

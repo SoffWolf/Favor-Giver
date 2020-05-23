@@ -8,13 +8,19 @@ import (
 	"github.com/thechosenoneneo/favor-giver/pkg/db"
 )
 
-func NewRESTServer(addr string, db *db.Database) *RESTServer {
+func NewRESTServer(addr string, db *db.Database) (*RESTServer, error) {
 	e := echo.New()
 	e.Use(customContextMiddleware(db))
 	e.Pre(middleware.AddTrailingSlash())
 	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 	e.GET("/", routes)
-	return &RESTServer{e, addr, db}
+	e.POST("/login/", login)
+	e.POST("/register/", register)
+	if err := initRSAKey(); err != nil {
+		return nil, err
+	}
+	return &RESTServer{e, addr, db}, nil
 }
 
 type RESTServer struct {

@@ -3,7 +3,6 @@ package v1alpha1
 import (
 	"github.com/labstack/echo"
 	"github.com/thechosenoneneo/favor-giver/pkg/db"
-	"github.com/thechosenoneneo/favor-giver/pkg/rest"
 	"github.com/thechosenoneneo/favor-giver/pkg/rest/meta"
 	registerrest "github.com/thechosenoneneo/favor-giver/pkg/rest/register"
 )
@@ -91,7 +90,7 @@ var (
 	}
 )
 
-func RegisterREST(apiGroups *rest.APIGroupsHandler) error {
+func RegisterREST(apiGroups registerrest.APIGroupsHandler) error {
 	coreAPIGroup, err := apiGroups.Add(GroupName, Version)
 	if err != nil {
 		return err

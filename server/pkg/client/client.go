@@ -37,6 +37,7 @@ type Client struct {
 	gv        meta.GroupVersion
 	resources map[string]registerrest.Resource
 	clients   map[string]ResourceClient
+	token     string
 }
 
 func (c *Client) Dynamic(resourceName string) ResourceClient {
@@ -45,11 +46,21 @@ func (c *Client) Dynamic(resourceName string) ResourceClient {
 	}
 	if res, ok := c.resources[resourceName]; ok {
 		url := fmt.Sprintf("%s/apis/%s/%s/%s", c.addr, c.gv.GroupName, c.gv.Version, res.Name())
-		rc := newResourceClient(url, res)
+		rc := newResourceClient(url, res, c.authHook)
 		c.clients[res.Name()] = rc
 		return rc
 	}
 	return notFoundRC
+}
+
+func (c *Client) SetJWTToken(token string) {
+	c.token = token
+}
+
+func (c *Client) authHook(req *http.Request) {
+	if len(c.token) != 0 {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	}
 }
 
 type ResourceClient interface {
@@ -62,16 +73,18 @@ type ResourceClient interface {
 	Delete(id string) (interface{}, error)
 }
 
-func newResourceClient(url string, resource registerrest.Resource) ResourceClient {
+func newResourceClient(url string, resource registerrest.Resource, authHook func(*http.Request)) ResourceClient {
 	return &resourceClient{
 		url:      url,
 		resource: resource,
+		authHook: authHook,
 	}
 }
 
 type resourceClient struct {
 	url      string
 	resource registerrest.Resource
+	authHook func(*http.Request)
 }
 
 func (rc *resourceClient) Get(id string) (interface{}, error) {
@@ -87,6 +100,11 @@ func (rc *resourceClient) do(method, url string, initObj func() interface{}, bod
 	req, err := http.NewRequest(method, url+"?preload=true", body)
 	if err != nil {
 		return nil, err
+	}
+
+	// Set authorization headers if applicable
+	if rc.authHook != nil {
+		rc.authHook(req)
 	}
 
 	if method == http.MethodPost || method == http.MethodPut {

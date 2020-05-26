@@ -1,0 +1,14 @@
+{
+    "person": {
+        "firstName": "The",
+        "lastName": "Joker",
+        "phoneNumber": "04511111",
+        "address": {
+            "address": "My other home"
+        },
+    },
+    "picture" : {
+        "url": require("./download.jpeg"),  
+    },
+    "star" : 3,
+  }

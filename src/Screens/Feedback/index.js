@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome'
+import { NavigationActions } from 'react-navigation';
 
 
 
@@ -26,8 +27,8 @@ function padding1(a, b, c, d) {
   }
 }
 
-
-const Feedback = () => {
+// this is for helper!!!!!!!!!!!
+const Feedback = ({navigation}) => {
   return (
     <ScrollView>
     <View style={{
@@ -76,7 +77,9 @@ const Feedback = () => {
 
             </View>
         </View>
-            <TouchableOpacity style={styles.button}  >
+            <TouchableOpacity 
+              style={styles.button}
+              onPress = {() => navigation.navigate('HomeScreen')}>
               <Text style={styles.buttonText}>DONE</Text>
             </TouchableOpacity>
     </View>

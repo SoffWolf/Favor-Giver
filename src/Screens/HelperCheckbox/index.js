@@ -98,7 +98,6 @@ const HelperCheckbox = ({navigation}) => {
             </View>
         </View>
       </View>
-            <Text>{JSON.stringify(navigation.getParam('data', 'json'))}{"\n"}</Text>
       <View style={{flex: 1, justifyContent: 'space-around', flexDirection: 'row'}}>
         <View style={styles.button}>   
           <Button 

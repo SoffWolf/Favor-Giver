@@ -66,7 +66,7 @@ const HomeScreen = ({navigation}) => {
             onPress = {() => {
               console.log('register as a seeker');
               //AsyncStorage.setItem('key', 'JWT_KEY');
-              navigation.navigate('SeekerNavigator');
+              navigation.navigate('RootStack');
             }}          
           />
         </ButtonContainer>

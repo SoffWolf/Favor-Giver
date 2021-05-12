@@ -12,10 +12,20 @@ import FixVehicle from '~/Screens/FixVehicle';
 import GeneralTask from '~/Screens/GeneralTask';
 import HelperUploadProfile from '~/Screens/HelperUploadProfile';
 import HelperInitialScreen from '~/Screens/HelperInitialScreen';
-import Pending from '~/Screens/Pending';
+import HelperPending from '~/Screens/HelperPending';
 import Feedback from '~/Screens/Feedback';
 import Matching from '~/Screens/Matching';
 import Done from '~/Screens/Done';
+
+import SeekerSignUp1 from '~/Screens/SeekerSignUp/SeekerSignUp1'
+import SeekerSignUp2 from '~/Screens/SeekerSignUp/SeekerSignUp2'
+import SeekerSignUp3 from '~/Screens/SeekerSignUp/SeekerSignUp3'
+import SeekerStart from '~/Screens/SeekerStart/SeekerStart'
+import RequestScreen from '~/Screens/RequestScreen/RequestScreen'
+import SeekerPendingScreen from '~/Screens/SeekerPendingScreen/SeekerPendingScreen'
+import OnTheWayScreen from '~/Screens/OnTheWayScreen/OnTheWayScreen'
+import FeedbackScreen from '~/Screens/FeedbackScreen/FeedbackScreen'
+import ArrivedScreen from '~/Screens/ArrivedScreen/ArrivedScreen'
 
 const LoginNavigator = createStackNavigator({
     Login,
@@ -38,7 +48,7 @@ const DoneNavigator = createSwitchNavigator({
 })
 
 const HelperPendingNavigator = createSwitchNavigator({
-    Pending,
+    HelperPending,
 })
 
 const HelperRegistrationNavigator = createStackNavigator({
@@ -52,11 +62,32 @@ const HelperRegistrationNavigator = createStackNavigator({
     }
 );
 
+const RootStack = createStackNavigator(
+    {
+      SeekerSignUp1: SeekerSignUp1,
+      SeekerSignUp2: SeekerSignUp2,
+      SeekerSignUp3: SeekerSignUp3,
+      SeekerStart : SeekerStart,
+      RequestScreen : RequestScreen,
+      SeekerPendingScreen : SeekerPendingScreen,
+      OnTheWayScreen: OnTheWayScreen,
+      FeedbackScreen: FeedbackScreen,
+      ArrivedScreen : ArrivedScreen,
+    },
+    {
+      headerMode : 'none'
+    },
+    {
+      initialRouteName: 'SeekerSignUp1',
+    }
+  );
+
 //createSwitchNavigator checks the login status of the user and switch the screen accordingly
 const  AppNavigator = createSwitchNavigator(
     {
     HomeScreen,
     CheckLogin,
+    RootStack,
     LoginNavigator,
     HelperRegistrationNavigator,
     HelperInitialScreenNavigator,
